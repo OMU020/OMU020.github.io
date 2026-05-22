@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Wiki Studio - Master Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    
+    <style>
+        :root {
+            --accent: #6366f1;
+            --accent-hover: #4f46e5;
+            --transition: all 0.2s ease;
+        }
+
+        [data-theme="dark"] {
+            --bg-main: #121214;
+            --bg-sidebar: #1a1a1e;
+            --bg-card: #26262b;
+            --text-main: #e3e3e6;
+            --text-muted: #9ca3af;
+            --border: #323238;
+            --input-bg: #121214;
+            --diff-del: #442326;
+            --diff-del-text: #ff9494;
+            --diff-add: #1b3c2a;
+            --diff-add-text: #99ff99;
+            --ac-bg: #222227;
+            --ac-hover: #31313a;
+            --ac-desc: #74747c;
+        }
+
+        [data-theme="light"] {
+            --bg-main: #f9fafb;
+            --bg-sidebar: #f3f4f6;
+            --bg-card: #ffffff;
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
+            --input-bg: #ffffff;
+            --diff-del: #fee2e2;
+            --diff-del-text: #991b1b;
+            --diff-add: #dcfce7;
+            --diff-add-text: #166534;
+            --ac-bg: #ffffff;
+            --ac-hover: #f3f4f6;
+            --ac-desc: #9ca3af;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        /* 사이드바 */
+        aside { width: 280px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 24px; }
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .wiki-logo { font-size: 1.3rem; font-weight: 700; color: var(--accent); display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        .theme-toggle, .btn-icon {
+            background: none; border: none; color: var(--text-muted); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; padding: 6px; border-radius: 50%;
+        }
+        .theme-toggle:hover, .btn-icon:hover { background-color: var(--bg-card); color: var(--text-main); }
+        .search-box { position: relative; margin-bottom: 16px; }
+        .search-box input {
+            width: 100%; padding: 10px 12px 10px 36px; background-color: var(--input-bg);
+            border: 1px solid var(--border); border-radius: 8px; color: var(--text-main); font-size: 0.9rem; outline: none;
+        }
+        .search-box .material-icons { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1.2rem; }
+        .btn-add-wiki {
+            width: 100%; padding: 10px; margin-bottom: 16px; background-color: var(--accent); color: white;
+            border: none; border-radius: 8px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .btn-add-wiki:hover { background-color: var(--accent-hover); }
+        .menu-list { list-style: none; overflow-y: auto; flex-grow: 1; }
+        .menu-item { padding: 10px 12px; margin-bottom: 4px; border-radius: 6px; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
+        .menu-item:hover, .menu-item.active { background-color: var(--bg-card); color: var(--text-main); }
+        .menu-item.active { border-left: 4px solid var(--accent); padding-left: 8px; font-weight: 500; }
+
+        /* 메인 영역 */
+        main { flex-grow: 1; padding: 40px 60px; overflow-y: auto; display: flex; justify-content: center; }
+        .content-container { width: 100%; max-width: 800px; position: relative; }
+        
+        /* 툴바 */
+        .wiki-actions { position: absolute; top: 0; right: 0; display: flex; gap: 8px; }
+        .wiki-header { border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 24px; padding-right: 160px;}
+        .wiki-title { font-size: 2.3rem; font-weight: 700; margin-bottom: 8px; word-break: break-all; }
+        .wiki-meta { font-size: 0.85rem; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+        .tag { background-color: var(--bg-sidebar); color: var(--accent); padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; }
+        
+        /* 본문 스타일 */
+        .wiki-body { font-size: 1.05rem; line-height: 1.8; color: var(--text-main); }
+        .wiki-body h2 { margin: 32px 0 12px 0; border-bottom: 1px solid var(--border); padding-bottom: 6px; font-size: 1.6rem; }
+        .wiki-body h3 { margin: 24px 0 10px 0; border-left: 4px solid var(--accent); padding-left: 10px; font-size: 1.25rem; }
+        .wiki-body p { margin-bottom: 14px; }
+        .wiki-body ul, .wiki-body ol { margin-left: 24px; margin-bottom: 14px; }
+        .wiki-body img { max-width: 100%; height: auto; border-radius: 8px; margin: 16px 0; display: block; border: 1px solid var(--border); }
+        
+        /* 표 가독성 스타일 보완 */
+        .wiki-body table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .wiki-body th, .wiki-body td { border: 1px solid var(--border); padding: 10px 12px; text-align: left; }
+        .wiki-body th { background-color: var(--bg-sidebar); }
+
+        /* 공통 폼 레이아웃 */
+        .wiki-pane { display: none; }
+        .active-pane { display: block; }
+        
+        .form-group { margin-bottom: 16px; position: relative; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.9rem; color: var(--text-muted); font-weight: 500; }
+        .form-control {
+            width: 100%; padding: 12px; background-color: var(--input-bg); border: 1px solid var(--border);
+            border-radius: 8px; color: var(--text-main); font-size: 1rem; outline: none;
+        }
+        textarea.form-control { min-height: 380px; resize: vertical; font-family: monospace; font-size: 0.95rem; line-height: 1.5; }
+        
+        /* 🎯 개선된 자동완성 팝업 스타일 (절대 좌표 추적 대응) */
+        .autocomplete-popup {
+            position: absolute; display: none; z-index: 1000; width: 340px;
+            background-color: var(--ac-bg); border: 1px solid var(--border);
+            border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            max-height: 260px; 
+            overflow-y: auto;
+            list-style: none;
+        }
+        .autocomplete-popup::-webkit-scrollbar { width: 6px; }
+        .autocomplete-popup::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        .autocomplete-popup::-webkit-scrollbar-track { background: transparent; }
+
+        .ac-item {
+            height: 37px; padding: 0 12px; cursor: pointer; display: flex; justify-content: space-between;
+            align-items: center; font-family: monospace; font-size: 0.85rem; border-bottom: 1px solid rgba(0,0,0,0.02);
+        }
+        .ac-item:hover, .ac-item.selected { background-color: var(--ac-hover); }
+        .ac-item.selected .ac-tag { text-decoration: underline; }
+        .ac-tag { color: var(--accent); font-weight: bold; }
+        .ac-desc { color: var(--ac-desc); font-size: 0.78rem; text-align: right; margin-left: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px; }
+
+        /* 이미지 업로드 */
+        .image-upload-zone { border: 2px dashed var(--border); padding: 20px; border-radius: 8px; text-align: center; cursor: pointer; color: var(--text-muted); }
+        .image-upload-zone:hover { border-color: var(--accent); color: var(--text-main); }
+        .image-preview-container { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+        .preview-img-wrap { position: relative; width: 80px; height: 80px; }
+        .preview-img-wrap img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
+        .preview-img-wrap .del-btn { position: absolute; top: -4px; right: -4px; background: red; color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; cursor: pointer; }
+
+        .form-actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 24px; }
+        .btn { padding: 10px 20px; border-radius: 8px; font-weight: 500; cursor: pointer; border: none; font-size: 0.95rem; }
+        .btn-primary { background-color: var(--accent); color: white; }
+        .btn-primary:hover { background-color: var(--accent-hover); }
+        .btn-secondary { background-color: var(--bg-sidebar); color: var(--text-main); border: 1px solid var(--border); }
+
+        /* 역사 내역 스타일 */
+        .history-list { list-style: none; margin-top: 20px; }
+        .history-item {
+            padding: 16px; background-color: var(--bg-sidebar); border: 1px solid var(--border);
+            border-radius: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .history-info h4 { font-size: 1.05rem; margin-bottom: 4px; color: var(--text-main); }
+        .history-info p { font-size: 0.85rem; color: var(--text-muted); }
+
+        /* Diff 스타일 */
+        .diff-container {
+            margin-top: 20px; background-color: var(--input-bg); border: 1px solid var(--border);
+            border-radius: 8px; font-family: monospace; font-size: 0.95rem; overflow: hidden; line-height: 1.6;
+        }
+        .diff-line { display: flex; padding: 4px 12px; border-bottom: 1px solid rgba(0,0,0,0.05); white-space: pre-wrap; word-break: break-all; }
+        .diff-line.removed { background-color: var(--diff-del); color: var(--diff-del-text); }
+        .diff-line.added { background-color: var(--diff-add); color: var(--diff-add-text); }
+        .diff-line.normal { color: var(--text-muted); opacity: 0.7; }
+        .diff-mark { width: 24px; font-weight: bold; display: inline-block; flex-shrink: 0; }
+
+        /* 보안 배지 스타일 */
+        .badge-secure {
+            background-color: #ef4444; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 4px; font-weight: 500;
+        }
+    </style>
+</head>
+<body data-theme="dark">
+
+    <!-- 사이드바 -->
+    <aside>
+        <div class="sidebar-header">
+            <div class="wiki-logo" onclick="goToMain()">
+                <span class="material-icons">auto_stories</span>
+                <span>Wiki</span>
+            </div>
+            <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">
+                <span class="material-icons">light_mode</span>
+            </button>
+        </div>
+        <div class="search-box">
+            <span class="material-icons">search</span>
+            <input type="text" id="wikiSearch" placeholder="문서 검색..." onkeyup="searchWiki()">
+        </div>
+        <button class="btn-add-wiki" onclick="openCreateForm()">
+            <span class="material-icons">add</span> 새 문서 만들기
+        </button>
+        <ul class="menu-list" id="menuList"></ul>
+    </aside>
+
+    <!-- 메인 영역 -->
+    <main>
+        <div class="content-container">
+            
+            <!-- 읽기 모드 판넬 -->
+            <div id="paneView" class="wiki-pane active-pane">
+                <div class="wiki-actions" id="wikiActionButtons">
+                    <button class="btn-icon" onclick="openHistoryPane()" title="역사(수정 기록)"><span class="material-icons">history</span></button>
+                    <button class="btn-icon" id="editActionBtn" onclick="openEditForm()" title="편집"><span class="material-icons">edit</span></button>
+                    <button class="btn-icon" id="deleteActionBtn" onclick="deleteDocument()" title="삭제" style="color:#ef4444;"><span class="material-icons">delete</span></button>
+                </div>
+                <div class="wiki-header">
+                    <h1 class="wiki-title" id="displayTitle"></h1>
+                    <div class="wiki-meta" id="displayMeta"></div>
+                </div>
+                <div class="wiki-body" id="displayBody"></div>
+            </div>
+
+            <!-- 편집/추가 폼 판넬 -->
+            <div id="paneForm" class="wiki-pane">
+                <h2 id="formModeTitle" style="margin-bottom: 24px;">문서 편집</h2>
+                <div class="form-group">
+                    <label for="formTitle">문서 제목</label>
+                    <input type="text" id="formTitle" class="form-control" placeholder="문서 제목 입력">
+                </div>
+                <div class="form-group">
+                    <label for="formTags">태그 (쉼표로 구분)</label>
+                    <input type="text" id="formTags" class="form-control" placeholder="예: 개발, 일상">
+                </div>
+                <div class="form-group">
+                    <label>이미지 첨부</label>
+                    <div class="image-upload-zone" onclick="document.getElementById('imageInput').click()">
+                        <span class="material-icons" style="font-size: 2rem; margin-bottom: 4px;">image</span>
+                        <p>클릭하여 이미지 파일 업로드</p>
+                        <input type="file" id="imageInput" style="display: none;" accept="image/*" multiple onchange="handleImageUpload(event)">
+                    </div>
+                    <div class="image-preview-container" id="imagePreviewContainer"></div>
+                </div>
+                <div class="form-group">
+                    <label for="formContent">본문 내용 (단어를 작성하다가 혹은 빈 줄에서 **Tab**을 눌러보세요!)</label>
+                    <textarea id="formContent" class="form-control" onkeydown="handleEditorKeyDown(event)" oninput="closeAutoComplete()"></textarea>
+                    
+                    <!-- 🎯 자바스크립트로 동적 위치 계산 제어가 반영될 자동완성 팝업 레이어 -->
+                    <ul id="autoCompletePopup" class="autocomplete-popup" onwheel="handlePopupWheel(event)"></ul>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-secondary" onclick="switchPane('paneView')">취소</button>
+                    <button class="btn btn-primary" onclick="saveDocument()">저장하기</button>
+                </div>
+            </div>
+
+            <!-- 역사(수정 기록) 판넬 -->
+            <div id="paneHistory" class="wiki-pane">
+                <div class="wiki-actions">
+                    <button class="btn-icon" onclick="switchPane('paneView')" title="문서로 돌아가기"><span class="material-icons">arrow_back</span></button>
+                </div>
+                <div class="wiki-header">
+                    <h1 class="wiki-title" id="historyPageTitle">수정 역사</h1>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">해당 문서의 과거 수정 이력을 확인하고 변경 사항을 비교합니다.</p>
+                </div>
+                
+                <ul class="history-list" id="historyListContainer"></ul>
+                
+                <div id="diffSection" style="display: none; margin-top: 40px;">
+                    <h3 style="margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+                        <span class="material-icons" style="color: var(--accent)">difference</span> 변경 사항 비교 (비포 & 애프터)
+                    </h3>
+                    <div class="diff-container" id="diffViewContainer"></div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // HTML 태그 데이터베이스 (A~Z 정렬 상태 보존)
+        const htmlTagsDb = [
+            { tag: "a", desc: "링크 이동 하이퍼링크" },
+            { tag: "b", desc: "굵은 글씨 (단순 강조)" },
+            { tag: "blockquote", desc: "길게 인용하는 블록 구역" },
+            { tag: "br", desc: "줄 바꿈 (개행)" },
+            { tag: "code", desc: "한 줄 코드 블록 표현" },
+            { tag: "div", desc: "레이아웃 그룹 구역 나누기" },
+            { tag: "em", desc: "이탤릭체 글씨 강조" },
+            { tag: "h2", desc: "대제목 (나무위키 상단선)" },
+            { tag: "h3", desc: "소제목 (인디고 네온 바)" },
+            { tag: "i", desc: "기울임꼴 아이콘 글씨" },
+            { tag: "img", desc: "외부 이미지 삽입" },
+            { tag: "li", desc: "리스트 내부 항목" },
+            { tag: "ol", desc: "숫자가 매겨지는 리스트" },
+            { tag: "p", desc: "가장 기본이 되는 본문 문단" },
+            { tag: "pre", desc: "형식화된 텍스트/코드 통짜 출력" },
+            { tag: "span", desc: "문장 내 특정 단어 디자인 지정" },
+            { tag: "strong", desc: "매우 중요한 굵은 글씨" },
+            { tag: "table", desc: "데이터 표 레이아웃" },
+            { tag: "ul", desc: "기호가 붙는 순서 없는 리스트" }
+        ];
+
+        // 🎯 제안 2 반영: 수정/삭제가 불가능한 시스템 지정 '기능 목록(임시 이름)' 위키 기본 탑재
+        const defaultData = {
+            "메인페이지": {
+                title: "나만의 비밀 위키 🚀",
+                date: "2026-05-22",
+                tags: ["Welcome"],
+                images: [],
+                content: "<p>나만의 지식을 기록하고 정리하는 커스텀 위키 공간입니다.\n편집 화면에서 단어를 치다가 혹은 빈 곳에서 Tab을 누르면 내 커서 바로 밑에 전체 기능 리스트가 펼쳐집니다.</p>",
+                history: [{ date: "2026-05-22 22:00:00", content: "<p>나만의 지식을 기록하고 정리하는 커스텀 위키 공간입니다.</p>", note: "최초 생성" }]
+            },
+            "기능_목록(임시_이름)": {
+                title: "기능 목록 🔒",
+                date: "2026-05-22",
+                tags: ["System", "Guide"],
+                images: [],
+                isProtected: true, // 보안 플래그 설정
+                content: `<h2>시스템 기능 안내 및 사용법 가이드</h2>
+                <p>본 문서는 시스템 공식 기능 목록 가이드이며, 무결성 유지를 위해 일반 사용자가 수정하거나 삭제할 수 없습니다.</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>대분류</th>
+                            <th>기능 명칭 및 문법</th>
+                            <th>설명 및 활용 가이드 내용</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><b>자동완성 레이어</b></td>
+                            <td>에디터 내 <code>Tab</code> 키 입력</td>
+                            <td>작성 중이던 커서 바로 아랫줄에 자동완성 팝업을 띄워 HTML 태그 삽입 속도를 높여줍니다.</td>
+                        </tr>
+                        <tr>
+                            <td><b>기본 문단 생성</b></td>
+                            <td><code>&lt;p&gt;내용&lt;/p&gt;</code></td>
+                            <td>가장 기본이 되는 글 작성 본문 문단을 생성할 때 씁니다.</td>
+                        </tr>
+                        <tr>
+                            <td><b>대제목 스타일</b></td>
+                            <td><code>&lt;h2&gt;제목&lt;/h2&gt;</code></td>
+                            <td>문서 내부 단락을 구분 짓는 가로선 스타일의 큰 대제목을 생성합니다.</td>
+                        </tr>
+                        <tr>
+                            <td><b>소제목 스타일</b></td>
+                            <td><code>&lt;h3&gt;제목&lt;/h3&gt;</code></td>
+                            <td>왼쪽에 하이라이트 인디고 세온 바가 포함된 중간/작은 수준의 단락 소제목을 만듭니다.</td>
+                        </tr>
+                    </tbody>
+                </table>`,
+                history: [{ date: "2026-05-22 22:00:00", content: "최초 시스템 생성 가이드라인", note: "시스템 배포" }]
+            }
+        };
+
+        let wikiData = {};
+        let currentKey = "메인페이지";
+        let uploadedImages = [];
+        
+        let activeSelectedIndex = 0; 
+        let currentMatchTags = [];
+
+        function init() {
+            const savedTheme = localStorage.getItem('wiki-theme') || 'dark';
+            document.body.setAttribute('data-theme', savedTheme);
+            document.getElementById('themeBtn').innerHTML = `<span class="material-icons">${savedTheme === 'dark' ? 'light_mode' : 'dark_mode'}</span>`;
+
+            const savedData = localStorage.getItem('MASTER_WIKI_STORAGE_KEY');
+            if (savedData) {
+                wikiData = JSON.parse(savedData);
+                // 항상 공식 위키가 유지되도록 보장 처리
+                if (!wikiData["기능_목록(임시_이름)"]) {
+                    wikiData["기능_목록(임시_이름)"] = defaultData["기능_목록(임시_이름)"];
+                }
+            } else {
+                wikiData = defaultData;
+                localStorage.setItem('MASTER_WIKI_STORAGE_KEY', JSON.stringify(wikiData));
+            }
+
+            const savedKey = localStorage.getItem('wiki-current-key');
+            currentKey = (savedKey && wikiData[savedKey]) ? savedKey : Object.keys(wikiData)[0];
+
+            renderSidebar();
+            if(currentKey) loadDocument(currentKey);
+        }
+
+        function commitStorage() {
+            localStorage.setItem('MASTER_WIKI_STORAGE_KEY', JSON.stringify(wikiData));
+        }
+
+        // 🎯 [제안 1 핵심] Textarea 안의 커서 위치 기반 픽셀 좌표 좌표 계산 유틸리티
+        function getCaretCoordinates(textarea, position) {
+            const text = textarea.value.substring(0, position);
+            
+            // 더미 엘리먼트를 만들어 에디터와 똑같은 스타일 속성을 복사하여 가상 좌표 연산
+            const div = document.createElement('div');
+            const copyStyle = window.getComputedStyle(textarea);
+            for (const prop of copyStyle) {
+                div.style[prop] = copyStyle[prop];
+            }
+            div.style.position = 'absolute';
+            div.style.visibility = 'hidden';
+            div.style.whiteSpace = 'pre-wrap';
+            div.style.wordBreak = 'break-all';
+            
+            // 줄바꿈 매칭 계산 보정
+            div.textContent = text;
+            
+            const span = document.createElement('span');
+            span.textContent = textarea.value.substring(position) || '.';
+            div.appendChild(span);
+            
+            document.body.appendChild(div);
+            const { offsetLeft: spanLeft, offsetTop: spanTop } = span;
+            const lineHeight = parseInt(copyStyle.lineHeight);
+            document.body.removeChild(div);
+            
+            // 에디터 엘리먼트 자체의 스크롤 및 위치 오프셋 값 산출 통합
+            const rect = textarea.getBoundingClientRect();
+            
+            return {
+                left: rect.left + spanLeft - textarea.scrollLeft,
+                top: rect.top + spanTop - textarea.scrollTop + lineHeight
+            };
+        }
+
+        // 키보드 내비게이션 & Tab 작동 연산 처리
+        function handleEditorKeyDown(event) {
+            const textarea = event.target;
+            const popup = document.getElementById('autoCompletePopup');
+
+            if (popup.style.display === 'block') {
+                if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    activeSelectedIndex = (activeSelectedIndex + 1) % currentMatchTags.length;
+                    renderPopupItems();
+                    scrollSelectedIntoView();
+                    return;
+                }
+                if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    activeSelectedIndex = (activeSelectedIndex - 1 + currentMatchTags.length) % currentMatchTags.length;
+                    renderPopupItems();
+                    scrollSelectedIntoView();
+                    return;
+                }
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    injectSelectedTag(textarea);
+                    return;
+                }
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    closeAutoComplete();
+                    return;
+                }
+            }
+
+            if (event.key === 'Tab') {
+                event.preventDefault();
+
+                const text = textarea.value;
+                const cursorPos = textarea.selectionStart;
+                
+                const textBeforeCursor = text.substring(0, cursorPos);
+                const words = textBeforeCursor.split(/[\s\n<>]+/);
+                const lastWord = words[words.length - 1].toLowerCase();
+
+                const matches = htmlTagsDb.filter(item => item.tag.startsWith(lastWord));
+                
+                if (lastWord && matches.length > 0) {
+                    currentMatchTags = matches;
+                    popup.setAttribute('data-search', lastWord);
+                } else {
+                    currentMatchTags = [...htmlTagsDb];
+                    popup.setAttribute('data-search', '');
+                }
+
+                activeSelectedIndex = 0;
+                openAutoCompletePopup(textarea);
+            }
+        }
+
+        // 🎯 [제안 1 핵심] 사용자가 타이핑 중인 줄 바로 밑에 팝업 띄우기
+        function openAutoCompletePopup(textarea) {
+            const popup = document.getElementById('autoCompletePopup');
+            const cursorPos = textarea.selectionStart;
+            
+            // 실시간 커서의 한 줄 밑 절대 픽셀($top, left$) 좌표 연산 반영
+            const coords = getCaretCoordinates(textarea, cursorPos);
+            
+            // 메인 컨테이너 외부 레이아웃 스크롤 기준 좌표 보정 연산
+            const mainContainer = document.querySelector('main');
+            const mainRect = mainContainer.getBoundingClientRect();
+
+            popup.style.position = 'fixed';
+            popup.style.left = `${coords.left}px`;
+            popup.style.top = `${coords.top + 4}px`; // 한 줄 밑 4px 여백 배치
+            popup.style.display = 'block';
+
+            renderPopupItems();
+            popup.scrollTop = 0;
+        }
+
+        function renderPopupItems() {
+            const popup = document.getElementById('autoCompletePopup');
+            popup.innerHTML = '';
+
+            currentMatchTags.forEach((item, idx) => {
+                const li = document.createElement('li');
+                li.className = `ac-item ${idx === activeSelectedIndex ? 'selected' : ''}`;
+                
+                li.onclick = () => {
+                    activeSelectedIndex = idx;
+                    injectSelectedTag(document.getElementById('formContent'));
+                };
+
+                li.innerHTML = `
+                    <span class="ac-tag">&lt;${item.tag}&gt;</span>
+                    <span class="ac-desc">${item.desc}</span>
+                `;
+                popup.appendChild(li);
+            });
+        }
+
+        function handlePopupWheel(event) {
+            const popup = document.getElementById('autoCompletePopup');
+            if (popup.style.display === 'block') {
+                event.preventDefault();
+                popup.scrollTop += event.deltaY * 0.5;
+            }
+        }
+
+        function scrollSelectedIntoView() {
+            const popup = document.getElementById('autoCompletePopup');
+            const items = popup.getElementsByClassName('ac-item');
+            if (items.length === 0 || !items[activeSelectedIndex]) return;
+
+            const selectedItem = items[activeSelectedIndex];
+            const itemTop = selectedItem.offsetTop;
+            const itemBottom = itemTop + selectedItem.offsetHeight;
+            const popupScrollTop = popup.scrollTop;
+            const popupHeight = popup.clientHeight;
+
+            if (itemTop < popupScrollTop) {
+                popup.scrollTop = itemTop;
+            } else if (itemBottom > popupScrollTop + popupHeight) {
+                popup.scrollTop = itemBottom - popupHeight;
+            }
+        }
+
+        function injectSelectedTag(textarea) {
+            const popup = document.getElementById('autoCompletePopup');
+            if (currentMatchTags.length === 0) return;
+
+            const selected = currentMatchTags[activeSelectedIndex].tag;
+            const text = textarea.value;
+            const cursorPos = textarea.selectionStart;
+            const searchWord = popup.getAttribute('data-search') || '';
+
+            const startPos = cursorPos - searchWord.length;
+            const before = text.substring(0, startPos);
+            const after = text.substring(cursorPos);
+            
+            const injectedText = `<${selected}></${selected}>`;
+            textarea.value = before + injectedText + after;
+
+            const newCursorPos = startPos + selected.length + 2;
+            textarea.setSelectionRange(newCursorPos, newCursorPos);
+            textarea.focus();
+
+            closeAutoComplete();
+        }
+
+        function closeAutoComplete() {
+            document.getElementById('autoCompletePopup').style.display = 'none';
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.body.getAttribute('data-theme');
+            const targetTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.body.setAttribute('data-theme', targetTheme);
+            localStorage.setItem('wiki-theme', targetTheme);
+            document.getElementById('themeBtn').innerHTML = `<span class="material-icons">${targetTheme === 'dark' ? 'light_mode' : 'dark_mode'}</span>`;
+        }
+
+        function switchPane(paneId) {
+            document.querySelectorAll('.wiki-pane').forEach(pane => pane.classList.remove('active-pane'));
+            document.getElementById(paneId).classList.add('active-pane');
+            closeAutoComplete();
+        }
+
+        function renderSidebar() {
+            const menuList = document.getElementById('menuList');
+            menuList.innerHTML = '';
+            Object.keys(wikiData).forEach(key => {
+                const li = document.createElement('li');
+                li.className = `menu-item ${key === currentKey ? 'active' : ''}`;
+                li.id = `menu-${key}`;
+                
+                // 공식 위키 고유 아이콘 지정 분기문
+                const icon = wikiData[key].isProtected ? 'verified' : 'description';
+                li.innerHTML = `<span class="material-icons" style="font-size:1.1rem;">${icon}</span> ${wikiData[key].title}`;
+                li.onclick = () => { loadDocument(key); switchPane('paneView'); };
+                menuList.appendChild(li);
+            });
+        }
+
+        function loadDocument(key) {
+            currentKey = key;
+            localStorage.setItem('wiki-current-key', key);
+            const doc = wikiData[key];
+            if (!doc) return;
+
+            document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+            if(document.getElementById(`menu-${key}`)) document.getElementById(`menu-${key}`).classList.add('active');
+            document.getElementById('displayTitle').innerText = doc.title;
+            
+            let imgHtml = '';
+            if (doc.images && doc.images.length > 0) {
+                doc.images.forEach(img => { imgHtml += `<img src="${img}">`; });
+            }
+            document.getElementById('displayBody').innerHTML = doc.content + imgHtml;
+
+            let tagsHtml = doc.tags.map(tag => `<span class="tag">#${tag.trim()}</span>`).join('');
+            
+            // 🎯 [제안 2 핵심] 읽기용 문서 로드 시 공식 위키 상태 체크 후 삭제/수정 차단 제어 구현
+            const editBtn = document.getElementById('editActionBtn');
+            const deleteBtn = document.getElementById('deleteActionBtn');
+            
+            if (doc.isProtected) {
+                editBtn.style.display = 'none';
+                deleteBtn.style.display = 'none';
+                tagsHtml += ` <span class="badge-secure"><span class="material-icons" style="font-size:0.9rem;">lock</span>수정 불가능 문서</span>`;
+            } else {
+                editBtn.style.display = 'flex';
+                deleteBtn.style.display = 'flex';
+            }
+
+            document.getElementById('displayMeta').innerHTML = `${tagsHtml} <span style="margin-left:auto; font-size:0.8rem;">최근 수정: ${doc.date}</span>`;
+        }
+
+        function openCreateForm() {
+            uploadedImages = [];
+            document.getElementById('formModeTitle').innerText = "새 문서 작성";
+            document.getElementById('formTitle').value = "";
+            document.getElementById('formTitle').disabled = false;
+            document.getElementById('formTags').value = "";
+            document.getElementById('formContent').value = "";
+            document.getElementById('imagePreviewContainer').innerHTML = "";
+            switchPane('paneForm');
+        }
+
+        function openEditForm() {
+            const doc = wikiData[currentKey];
+            if (doc.isProtected) return alert('시스템 공식 위키는 수정할 수 없습니다.');
+            
+            document.getElementById('formModeTitle').innerText = `"${doc.title}" 편집`;
+            document.getElementById('formTitle').value = doc.title;
+            document.getElementById('formTitle').disabled = true;
+            document.getElementById('formTags').value = doc.tags.join(', ');
+            document.getElementById('formContent').value = doc.content;
+            uploadedImages = doc.images ? [...doc.images] : [];
+            renderImagePreviews();
+            switchPane('paneForm');
+        }
+
+        function saveDocument() {
+            const title = document.getElementById('formTitle').value.trim();
+            const tagsInput = document.getElementById('formTags').value;
+            const content = document.getElementById('formContent').value;
+
+            if (!title) return alert('제목을 입력해주세요.');
+
+            const key = title.replace(/\s+/g, '_');
+            
+            // 혹시라도 우회 저장을 막기 위한 2차 무결성 검증 추가
+            if (wikiData[key] && wikiData[key].isProtected) {
+                return alert('해당 공식 문서는 수정 권한이 없습니다.');
+            }
+
+            const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(t => t) : [];
+            
+            const now = new Date();
+            const timeString = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+
+            let historyArray = (wikiData[key] && wikiData[key].history) ? [...wikiData[key].history] : [];
+
+            historyArray.push({
+                date: timeString,
+                content: content,
+                note: historyArray.length === 0 ? "최초 생성" : `${historyArray.length + 1}번째 수정`
+            });
+
+            wikiData[key] = {
+                title: title,
+                date: timeString.split(' ')[0],
+                tags: tags,
+                content: content,
+                images: uploadedImages,
+                history: historyArray
+            };
+
+            commitStorage();
+            renderSidebar();
+            loadDocument(key);
+            switchPane('paneView');
+        }
+
+        function openHistoryPane() {
+            const doc = wikiData[currentKey];
+            document.getElementById('historyPageTitle').innerText = `"${doc.title}" 수정 역사`;
+            const container = document.getElementById('historyListContainer');
+            container.innerHTML = '';
+            document.getElementById('diffSection').style.display = 'none';
+
+            if (!doc.history || doc.history.length === 0) {
+                container.innerHTML = '<li class="history-item">수정 기록이 없습니다.</li>';
+                switchPane('paneHistory');
+                return;
+            }
+
+            for (let i = doc.history.length - 1; i >= 0; i--) {
+                const item = doc.history[i];
+                const li = document.createElement('li');
+                li.className = 'history-item';
+                const prevContent = i > 0 ? doc.history[i - 1].content : "";
+
+                li.innerHTML = `
+                    <div class="history-info">
+                        <h4>${item.note}</h4>
+                        <p><span class="material-icons" style="font-size:0.8rem; vertical-align:middle;">schedule</span> ${item.date}</p>
+                    </div>
+                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size:0.85rem;" onclick="compareVersions(\`${escapeHtml(prevContent)}\`, \`${escapeHtml(item.content)}\`)">
+                        변경점 보기
+                    </button>
+                `;
+                container.appendChild(li);
+            }
+            switchPane('paneHistory');
+        }
+
+        function compareVersions(oldText, newText) {
+            const oldLines = oldText.split('\n');
+            const newLines = newText.split('\n');
+            const diffView = document.getElementById('diffViewContainer');
+            diffView.innerHTML = '';
+            let i = 0, j = 0;
+            
+            while (i < oldLines.length || j < newLines.length) {
+                if (i < oldLines.length && j < newLines.length && oldLines[i] === newLines[j]) {
+                    if (oldLines[i].trim() !== "") createDiffLine('normal', ' ', oldLines[i]);
+                    i++; j++;
+                } else {
+                    if (i < oldLines.length && (j >= newLines.length || !newLines.includes(oldLines[i]))) {
+                        createDiffLine('removed', '-', oldLines[i]); i++;
+                    } else if (j < newLines.length) {
+                        createDiffLine('added', '+', newLines[j]); j++;
+                    }
+                }
+            }
+            document.getElementById('diffSection').style.display = 'block';
+            document.getElementById('diffSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function createDiffLine(className, mark, text) {
+            const container = document.getElementById('diffViewContainer');
+            const div = document.createElement('div');
+            div.className = `diff-line ${className}`;
+            div.innerHTML = `<span class="diff-mark">${mark}</span><span>${escapeHtml(text)}</span>`;
+            container.appendChild(div);
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        function handleImageUpload(event) {
+            const files = event.target.files; if(!files) return;
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) { uploadedImages.push(e.target.result); renderImagePreviews(); };
+                reader.readAsDataURL(file);
+            });
+        }
+        
+        function renderImagePreviews() {
+            const container = document.getElementById('imagePreviewContainer'); container.innerHTML = '';
+            uploadedImages.forEach((img, idx) => {
+                const wrap = document.createElement('div'); wrap.className = 'preview-img-wrap';
+                wrap.innerHTML = `<img src="${img}"><button class="del-btn" onclick="uploadedImages.splice(${idx},1);renderImagePreviews();">✕</button>`;
+                container.appendChild(wrap);
+            });
+        }
+        
+        function deleteDocument() {
+            const doc = wikiData[currentKey];
+            if (doc && doc.isProtected) return alert('시스템 공식 위키는 삭제할 수 없습니다.');
+            if(!confirm('문서를 삭제하시겠습니까?')) return;
+            delete wikiData[currentKey]; commitStorage(); init();
+        }
+        
+        function searchWiki() {
+            const q = document.getElementById('wikiSearch').value.toLowerCase();
+            Object.keys(wikiData).forEach(k => {
+                const li = document.getElementById(`menu-${k}`); if(!li) return;
+                li.style.display = (wikiData[k].title.toLowerCase().includes(q) || wikiData[k].content.toLowerCase().includes(q)) ? 'flex' : 'none';
+            });
+        }
+        
+        function goToMain() { const keys = Object.keys(wikiData); if(keys.length>0) { loadDocument(keys[0]); switchPane('paneView'); } }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
