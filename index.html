@@ -275,7 +275,6 @@
     </main>
 
     <script>
-        // HTML 태그 데이터베이스 (A~Z 정렬 상태 보존)
         const htmlTagsDb = [
             { tag: "a", desc: "링크 이동 하이퍼링크" },
             { tag: "b", desc: "굵은 글씨 (단순 강조)" },
@@ -298,7 +297,6 @@
             { tag: "ul", desc: "기호가 붙는 순서 없는 리스트" }
         ];
 
-        // 🎯 대문(메인페이지)의 문구 수정 완료
         const defaultData = {
             "메인페이지": {
                 title: "개인 위키",
@@ -317,13 +315,13 @@
         let activeSelectedIndex = 0; 
         let currentMatchTags = [];
 
-function init() {
+        function init() {
             const savedTheme = localStorage.getItem('wiki-theme') || 'dark';
             document.body.setAttribute('data-theme', savedTheme);
             document.getElementById('themeBtn').innerHTML = `<span class="material-icons">${savedTheme === 'dark' ? 'light_mode' : 'dark_mode'}</span>`;
 
             const savedData = localStorage.getItem('MASTER_WIKI_STORAGE_KEY');
-            // 💡 수정된 부분: 저장소 데이터가 비어있거나, 데이터는 있는데 문서가 하나도 없을 때(지웠을 때) 기본값을 새로 불러옵니다.
+            // 데이터가 아예 없거나, 빈 객체({}) 일 때 기본값을 세팅하도록 수정
             if (savedData && savedData !== "{}" && Object.keys(JSON.parse(savedData)).length > 0) {
                 wikiData = JSON.parse(savedData);
             } else {
@@ -335,118 +333,76 @@ function init() {
             currentKey = (savedKey && wikiData[savedKey]) ? savedKey : Object.keys(wikiData)[0];
 
             renderSidebar();
-            if(currentKey) loadDocument(currentKey);
+            if(currentKey) {
+                loadDocument(currentKey);
+            } else {
+                // 완전히 빈 상태일 때 UI 초기화
+                document.getElementById('displayTitle').innerText = "";
+                document.getElementById('displayBody').innerHTML = "";
+                document.getElementById('displayMeta').innerHTML = "";
+            }
         }
 
         function commitStorage() {
             localStorage.setItem('MASTER_WIKI_STORAGE_KEY', JSON.stringify(wikiData));
         }
 
-        // Textarea 안의 커서 위치 기반 픽셀 좌표 좌표 계산 유틸리티
         function getCaretCoordinates(textarea, position) {
             const text = textarea.value.substring(0, position);
-            
             const div = document.createElement('div');
             const copyStyle = window.getComputedStyle(textarea);
-            for (const prop of copyStyle) {
-                div.style[prop] = copyStyle[prop];
-            }
+            for (const prop of copyStyle) { div.style[prop] = copyStyle[prop]; }
             div.style.position = 'absolute';
             div.style.visibility = 'hidden';
             div.style.whiteSpace = 'pre-wrap';
             div.style.wordBreak = 'break-all';
-            
             div.textContent = text;
-            
             const span = document.createElement('span');
             span.textContent = textarea.value.substring(position) || '.';
             div.appendChild(span);
-            
             document.body.appendChild(div);
             const { offsetLeft: spanLeft, offsetTop: spanTop } = span;
             const lineHeight = parseInt(copyStyle.lineHeight);
             document.body.removeChild(div);
-            
             const rect = textarea.getBoundingClientRect();
-            
-            return {
-                left: rect.left + spanLeft - textarea.scrollLeft,
-                top: rect.top + spanTop - textarea.scrollTop + lineHeight
-            };
+            return { left: rect.left + spanLeft - textarea.scrollLeft, top: rect.top + spanTop - textarea.scrollTop + lineHeight };
         }
 
-        // 키보드 내비게이션 & Tab 작동 연산 처리
         function handleEditorKeyDown(event) {
             const textarea = event.target;
             const popup = document.getElementById('autoCompletePopup');
 
             if (popup.style.display === 'block') {
-                if (event.key === 'ArrowDown') {
-                    event.preventDefault();
-                    activeSelectedIndex = (activeSelectedIndex + 1) % currentMatchTags.length;
-                    renderPopupItems();
-                    scrollSelectedIntoView();
-                    return;
-                }
-                if (event.key === 'ArrowUp') {
-                    event.preventDefault();
-                    activeSelectedIndex = (activeSelectedIndex - 1 + currentMatchTags.length) % currentMatchTags.length;
-                    renderPopupItems();
-                    scrollSelectedIntoView();
-                    return;
-                }
-                if (event.key === 'Enter') {
-                    event.preventDefault();
-                    injectSelectedTag(textarea);
-                    return;
-                }
-                if (event.key === 'Escape') {
-                    event.preventDefault();
-                    closeAutoComplete();
-                    return;
-                }
+                if (event.key === 'ArrowDown') { event.preventDefault(); activeSelectedIndex = (activeSelectedIndex + 1) % currentMatchTags.length; renderPopupItems(); scrollSelectedIntoView(); return; }
+                if (event.key === 'ArrowUp') { event.preventDefault(); activeSelectedIndex = (activeSelectedIndex - 1 + currentMatchTags.length) % currentMatchTags.length; renderPopupItems(); scrollSelectedIntoView(); return; }
+                if (event.key === 'Enter') { event.preventDefault(); injectSelectedTag(textarea); return; }
+                if (event.key === 'Escape') { event.preventDefault(); closeAutoComplete(); return; }
             }
 
             if (event.key === 'Tab') {
                 event.preventDefault();
-
                 const text = textarea.value;
                 const cursorPos = textarea.selectionStart;
-                
                 const textBeforeCursor = text.substring(0, cursorPos);
                 const words = textBeforeCursor.split(/[\s\n<>]+/);
                 const lastWord = words[words.length - 1].toLowerCase();
-
                 const matches = htmlTagsDb.filter(item => item.tag.startsWith(lastWord));
                 
-                if (lastWord && matches.length > 0) {
-                    currentMatchTags = matches;
-                    popup.setAttribute('data-search', lastWord);
-                } else {
-                    currentMatchTags = [...htmlTagsDb];
-                    popup.setAttribute('data-search', '');
-                }
-
+                if (lastWord && matches.length > 0) { currentMatchTags = matches; popup.setAttribute('data-search', lastWord); }
+                else { currentMatchTags = [...htmlTagsDb]; popup.setAttribute('data-search', ''); }
                 activeSelectedIndex = 0;
                 openAutoCompletePopup(textarea);
             }
         }
 
-        // 사용자가 타이핑 중인 줄 바로 밑에 팝업 띄우기
         function openAutoCompletePopup(textarea) {
             const popup = document.getElementById('autoCompletePopup');
             const cursorPos = textarea.selectionStart;
-            
             const coords = getCaretCoordinates(textarea, cursorPos);
-            
-            const mainContainer = document.querySelector('main');
-            const mainRect = mainContainer.getBoundingClientRect();
-
             popup.style.position = 'fixed';
             popup.style.left = `${coords.left}px`;
             popup.style.top = `${coords.top + 4}px`; 
             popup.style.display = 'block';
-
             renderPopupItems();
             popup.scrollTop = 0;
         }
@@ -454,76 +410,49 @@ function init() {
         function renderPopupItems() {
             const popup = document.getElementById('autoCompletePopup');
             popup.innerHTML = '';
-
             currentMatchTags.forEach((item, idx) => {
                 const li = document.createElement('li');
                 li.className = `ac-item ${idx === activeSelectedIndex ? 'selected' : ''}`;
-                
-                li.onclick = () => {
-                    activeSelectedIndex = idx;
-                    injectSelectedTag(document.getElementById('formContent'));
-                };
-
-                li.innerHTML = `
-                    <span class="ac-tag">&lt;${item.tag}&gt;</span>
-                    <span class="ac-desc">${item.desc}</span>
-                `;
+                li.onclick = () => { activeSelectedIndex = idx; injectSelectedTag(document.getElementById('formContent')); };
+                li.innerHTML = `<span class="ac-tag">&lt;${item.tag}&gt;</span><span class="ac-desc">${item.desc}</span>`;
                 popup.appendChild(li);
             });
         }
 
         function handlePopupWheel(event) {
             const popup = document.getElementById('autoCompletePopup');
-            if (popup.style.display === 'block') {
-                event.preventDefault();
-                popup.scrollTop += event.deltaY * 0.5;
-            }
+            if (popup.style.display === 'block') { event.preventDefault(); popup.scrollTop += event.deltaY * 0.5; }
         }
 
         function scrollSelectedIntoView() {
             const popup = document.getElementById('autoCompletePopup');
             const items = popup.getElementsByClassName('ac-item');
             if (items.length === 0 || !items[activeSelectedIndex]) return;
-
             const selectedItem = items[activeSelectedIndex];
             const itemTop = selectedItem.offsetTop;
             const itemBottom = itemTop + selectedItem.offsetHeight;
-            const popupScrollTop = popup.scrollTop;
-            const popupHeight = popup.clientHeight;
-
-            if (itemTop < popupScrollTop) {
-                popup.scrollTop = itemTop;
-            } else if (itemBottom > popupScrollTop + popupHeight) {
-                popup.scrollTop = itemBottom - popupHeight;
-            }
+            if (itemTop < popup.scrollTop) { popup.scrollTop = itemTop; }
+            else if (itemBottom > popup.scrollTop + popup.clientHeight) { popup.scrollTop = itemBottom - popup.clientHeight; }
         }
 
         function injectSelectedTag(textarea) {
             const popup = document.getElementById('autoCompletePopup');
             if (currentMatchTags.length === 0) return;
-
             const selected = currentMatchTags[activeSelectedIndex].tag;
             const text = textarea.value;
             const cursorPos = textarea.selectionStart;
             const searchWord = popup.getAttribute('data-search') || '';
-
             const startPos = cursorPos - searchWord.length;
             const before = text.substring(0, startPos);
             const after = text.substring(cursorPos);
-            
-            const injectedText = `<${selected}></${selected}>`;
-            textarea.value = before + injectedText + after;
-
+            textarea.value = before + `<${selected}></${selected}>` + after;
             const newCursorPos = startPos + selected.length + 2;
             textarea.setSelectionRange(newCursorPos, newCursorPos);
             textarea.focus();
-
             closeAutoComplete();
         }
 
-        function closeAutoComplete() {
-            document.getElementById('autoCompletePopup').style.display = 'none';
-        }
+        function closeAutoComplete() { document.getElementById('autoCompletePopup').style.display = 'none'; }
 
         function toggleTheme() {
             const currentTheme = document.body.getAttribute('data-theme');
@@ -546,7 +475,6 @@ function init() {
                 const li = document.createElement('li');
                 li.className = `menu-item ${key === currentKey ? 'active' : ''}`;
                 li.id = `menu-${key}`;
-                
                 li.innerHTML = `<span class="material-icons" style="font-size:1.1rem;">description</span> ${wikiData[key].title}`;
                 li.onclick = () => { loadDocument(key); switchPane('paneView'); };
                 menuList.appendChild(li);
@@ -564,16 +492,12 @@ function init() {
             document.getElementById('displayTitle').innerText = doc.title;
             
             let imgHtml = '';
-            if (doc.images && doc.images.length > 0) {
-                doc.images.forEach(img => { imgHtml += `<img src="${img}">`; });
-            }
+            if (doc.images && doc.images.length > 0) { doc.images.forEach(img => { imgHtml += `<img src="${img}">`; }); }
             document.getElementById('displayBody').innerHTML = doc.content + imgHtml;
-
             let tagsHtml = doc.tags.map(tag => `<span class="tag">#${tag.trim()}</span>`).join('');
             
             document.getElementById('editActionBtn').style.display = 'flex';
             document.getElementById('deleteActionBtn').style.display = 'flex';
-
             document.getElementById('displayMeta').innerHTML = `${tagsHtml} <span style="margin-left:auto; font-size:0.8rem;">최근 수정: ${doc.date}</span>`;
         }
 
@@ -590,7 +514,6 @@ function init() {
 
         function openEditForm() {
             const doc = wikiData[currentKey];
-            
             document.getElementById('formModeTitle').innerText = `"${doc.title}" 편집`;
             document.getElementById('formTitle').value = doc.title;
             document.getElementById('formTitle').disabled = true;
@@ -605,36 +528,18 @@ function init() {
             const title = document.getElementById('formTitle').value.trim();
             const tagsInput = document.getElementById('formTags').value;
             const content = document.getElementById('formContent').value;
-
             if (!title) return alert('제목을 입력해주세요.');
 
             const key = title.replace(/\s+/g, '_');
             const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(t => t) : [];
-            
             const now = new Date();
             const timeString = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
 
             let historyArray = (wikiData[key] && wikiData[key].history) ? [...wikiData[key].history] : [];
+            historyArray.push({ date: timeString, content: content, note: historyArray.length === 0 ? "최초 생성" : `${historyArray.length + 1}번째 수정` });
 
-            historyArray.push({
-                date: timeString,
-                content: content,
-                note: historyArray.length === 0 ? "최초 생성" : `${historyArray.length + 1}번째 수정`
-            });
-
-            wikiData[key] = {
-                title: title,
-                date: timeString.split(' ')[0],
-                tags: tags,
-                content: content,
-                images: uploadedImages,
-                history: historyArray
-            };
-
-            commitStorage();
-            renderSidebar();
-            loadDocument(key);
-            switchPane('paneView');
+            wikiData[key] = { title: title, date: timeString.split(' ')[0], tags: tags, content: content, images: uploadedImages, history: historyArray };
+            commitStorage(); renderSidebar(); loadDocument(key); switchPane('paneView');
         }
 
         function openHistoryPane() {
@@ -646,8 +551,7 @@ function init() {
 
             if (!doc.history || doc.history.length === 0) {
                 container.innerHTML = '<li class="history-item">수정 기록이 없습니다.</li>';
-                switchPane('paneHistory');
-                return;
+                switchPane('paneHistory'); return;
             }
 
             for (let i = doc.history.length - 1; i >= 0; i--) {
@@ -655,15 +559,12 @@ function init() {
                 const li = document.createElement('li');
                 li.className = 'history-item';
                 const prevContent = i > 0 ? doc.history[i - 1].content : "";
-
                 li.innerHTML = `
                     <div class="history-info">
                         <h4>${item.note}</h4>
                         <p><span class="material-icons" style="font-size:0.8rem; vertical-align:middle;">schedule</span> ${item.date}</p>
                     </div>
-                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size:0.85rem;" onclick="compareVersions(\`${escapeHtml(prevContent)}\`, \`${escapeHtml(item.content)}\`)">
-                        변경점 보기
-                    </button>
+                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size:0.85rem;" onclick="compareVersions(\`${escapeHtml(prevContent)}\`, \`${escapeHtml(item.content)}\`)" > 변경점 보기 </button>
                 `;
                 container.appendChild(li);
             }
@@ -671,22 +572,15 @@ function init() {
         }
 
         function compareVersions(oldText, newText) {
-            const oldLines = oldText.split('\n');
-            const newLines = newText.split('\n');
-            const diffView = document.getElementById('diffViewContainer');
-            diffView.innerHTML = '';
+            const oldLines = oldText.split('\n'); const newLines = newText.split('\n');
+            const diffView = document.getElementById('diffViewContainer'); diffView.innerHTML = '';
             let i = 0, j = 0;
-            
             while (i < oldLines.length || j < newLines.length) {
                 if (i < oldLines.length && j < newLines.length && oldLines[i] === newLines[j]) {
-                    if (oldLines[i].trim() !== "") createDiffLine('normal', ' ', oldLines[i]);
-                    i++; j++;
+                    if (oldLines[i].trim() !== "") createDiffLine('normal', ' ', oldLines[i]); i++; j++;
                 } else {
-                    if (i < oldLines.length && (j >= newLines.length || !newLines.includes(oldLines[i]))) {
-                        createDiffLine('removed', '-', oldLines[i]); i++;
-                    } else if (j < newLines.length) {
-                        createDiffLine('added', '+', newLines[j]); j++;
-                    }
+                    if (i < oldLines.length && (j >= newLines.length || !newLines.includes(oldLines[i]))) { createDiffLine('removed', '-', oldLines[i]); i++; }
+                    else if (j < newLines.length) { createDiffLine('added', '+', newLines[j]); j++; }
                 }
             }
             document.getElementById('diffSection').style.display = 'block';
@@ -695,16 +589,12 @@ function init() {
 
         function createDiffLine(className, mark, text) {
             const container = document.getElementById('diffViewContainer');
-            const div = document.createElement('div');
-            div.className = `diff-line ${className}`;
+            const div = document.createElement('div'); div.className = `diff-line ${className}`;
             div.innerHTML = `<span class="diff-mark">${mark}</span><span>${escapeHtml(text)}</span>`;
             container.appendChild(div);
         }
 
-        function escapeHtml(text) {
-            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-        }
-
+        function escapeHtml(text) { return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
         function handleImageUpload(event) {
             const files = event.target.files; if(!files) return;
             Array.from(files).forEach(file => {
@@ -713,7 +603,6 @@ function init() {
                 reader.readAsDataURL(file);
             });
         }
-        
         function renderImagePreviews() {
             const container = document.getElementById('imagePreviewContainer'); container.innerHTML = '';
             uploadedImages.forEach((img, idx) => {
@@ -722,12 +611,10 @@ function init() {
                 container.appendChild(wrap);
             });
         }
-        
         function deleteDocument() {
             if(!confirm('문서를 삭제하시겠습니까?')) return;
             delete wikiData[currentKey]; commitStorage(); init();
         }
-        
         function searchWiki() {
             const q = document.getElementById('wikiSearch').value.toLowerCase();
             Object.keys(wikiData).forEach(k => {
@@ -735,7 +622,6 @@ function init() {
                 li.style.display = (wikiData[k].title.toLowerCase().includes(q) || wikiData[k].content.toLowerCase().includes(q)) ? 'flex' : 'none';
             });
         }
-        
         function goToMain() { const keys = Object.keys(wikiData); if(keys.length>0) { loadDocument(keys[0]); switchPane('paneView'); } }
 
         window.onload = init;
