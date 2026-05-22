@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Personal Wiki Studio - Master Edition</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght=300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     
     <style>
@@ -120,7 +120,7 @@
         }
         textarea.form-control { min-height: 380px; resize: vertical; font-family: monospace; font-size: 0.95rem; line-height: 1.5; }
         
-        /* 🎯 개선된 자동완성 팝업 스타일 (절대 좌표 추적 대응) */
+        /* 자동완성 팝업 스타일 */
         .autocomplete-popup {
             position: absolute; display: none; z-index: 1000; width: 340px;
             background-color: var(--ac-bg); border: 1px solid var(--border);
@@ -175,11 +175,6 @@
         .diff-line.added { background-color: var(--diff-add); color: var(--diff-add-text); }
         .diff-line.normal { color: var(--text-muted); opacity: 0.7; }
         .diff-mark { width: 24px; font-weight: bold; display: inline-block; flex-shrink: 0; }
-
-        /* 보안 배지 스타일 */
-        .badge-secure {
-            background-color: #ef4444; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 4px; font-weight: 500;
-        }
     </style>
 </head>
 <body data-theme="dark">
@@ -189,7 +184,7 @@
         <div class="sidebar-header">
             <div class="wiki-logo" onclick="goToMain()">
                 <span class="material-icons">auto_stories</span>
-                <span>Wiki</span>
+                <span>MyWiki</span>
             </div>
             <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">
                 <span class="material-icons">light_mode</span>
@@ -247,7 +242,7 @@
                     <label for="formContent">본문 내용 (단어를 작성하다가 혹은 빈 줄에서 **Tab**을 눌러보세요!)</label>
                     <textarea id="formContent" class="form-control" onkeydown="handleEditorKeyDown(event)" oninput="closeAutoComplete()"></textarea>
                     
-                    <!-- 🎯 자바스크립트로 동적 위치 계산 제어가 반영될 자동완성 팝업 레이어 -->
+                    <!-- 자동완성 팝업 레이어 -->
                     <ul id="autoCompletePopup" class="autocomplete-popup" onwheel="handlePopupWheel(event)"></ul>
                 </div>
                 <div class="form-actions">
@@ -303,56 +298,15 @@
             { tag: "ul", desc: "기호가 붙는 순서 없는 리스트" }
         ];
 
-        // 🎯 제안 2 반영: 수정/삭제가 불가능한 시스템 지정 '기능 목록(임시 이름)' 위키 기본 탑재
+        // 🎯 대문(메인페이지)
         const defaultData = {
             "메인페이지": {
-                title: "나만의 비밀 위키 🚀",
+                title: "개인 위키",
                 date: "2026-05-22",
                 tags: ["Welcome"],
                 images: [],
-                content: "<p>나만의 지식을 기록하고 정리하는 커스텀 위키 공간입니다.\n편집 화면에서 단어를 치다가 혹은 빈 곳에서 Tab을 누르면 내 커서 바로 밑에 전체 기능 리스트가 펼쳐집니다.</p>",
-                history: [{ date: "2026-05-22 22:00:00", content: "<p>나만의 지식을 기록하고 정리하는 커스텀 위키 공간입니다.</p>", note: "최초 생성" }]
-            },
-            "기능_목록(임시_이름)": {
-                title: "기능 목록 🔒",
-                date: "2026-05-22",
-                tags: ["System", "Guide"],
-                images: [],
-                isProtected: true, // 보안 플래그 설정
-                content: `<h2>시스템 기능 안내 및 사용법 가이드</h2>
-                <p>본 문서는 시스템 공식 기능 목록 가이드이며, 무결성 유지를 위해 일반 사용자가 수정하거나 삭제할 수 없습니다.</p>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>대분류</th>
-                            <th>기능 명칭 및 문법</th>
-                            <th>설명 및 활용 가이드 내용</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><b>자동완성 레이어</b></td>
-                            <td>에디터 내 <code>Tab</code> 키 입력</td>
-                            <td>작성 중이던 커서 바로 아랫줄에 자동완성 팝업을 띄워 HTML 태그 삽입 속도를 높여줍니다.</td>
-                        </tr>
-                        <tr>
-                            <td><b>기본 문단 생성</b></td>
-                            <td><code>&lt;p&gt;내용&lt;/p&gt;</code></td>
-                            <td>가장 기본이 되는 글 작성 본문 문단을 생성할 때 씁니다.</td>
-                        </tr>
-                        <tr>
-                            <td><b>대제목 스타일</b></td>
-                            <td><code>&lt;h2&gt;제목&lt;/h2&gt;</code></td>
-                            <td>문서 내부 단락을 구분 짓는 가로선 스타일의 큰 대제목을 생성합니다.</td>
-                        </tr>
-                        <tr>
-                            <td><b>소제목 스타일</b></td>
-                            <td><code>&lt;h3&gt;제목&lt;/h3&gt;</code></td>
-                            <td>왼쪽에 하이라이트 인디고 세온 바가 포함된 중간/작은 수준의 단락 소제목을 만듭니다.</td>
-                        </tr>
-                    </tbody>
-                </table>`,
-                history: [{ date: "2026-05-22 22:00:00", content: "최초 시스템 생성 가이드라인", note: "시스템 배포" }]
+                content: "<p>나무위키 보고 나도 한 번 만들어보고 싶다는 생각에 만든 공간입니다.</p>",
+                history: [{ date: "2026-05-22 23:00:00", content: "<p>나무위키 보고 나도 한 번 만들어보고 싶다는 생각에 만든 공간입니다.</p>", note: "최초 생성" }]
             }
         };
 
@@ -371,10 +325,6 @@
             const savedData = localStorage.getItem('MASTER_WIKI_STORAGE_KEY');
             if (savedData) {
                 wikiData = JSON.parse(savedData);
-                // 항상 공식 위키가 유지되도록 보장 처리
-                if (!wikiData["기능_목록(임시_이름)"]) {
-                    wikiData["기능_목록(임시_이름)"] = defaultData["기능_목록(임시_이름)"];
-                }
             } else {
                 wikiData = defaultData;
                 localStorage.setItem('MASTER_WIKI_STORAGE_KEY', JSON.stringify(wikiData));
@@ -391,11 +341,10 @@
             localStorage.setItem('MASTER_WIKI_STORAGE_KEY', JSON.stringify(wikiData));
         }
 
-        // 🎯 [제안 1 핵심] Textarea 안의 커서 위치 기반 픽셀 좌표 좌표 계산 유틸리티
+        // Textarea 안의 커서 위치 기반 픽셀 좌표 좌표 계산 유틸리티
         function getCaretCoordinates(textarea, position) {
             const text = textarea.value.substring(0, position);
             
-            // 더미 엘리먼트를 만들어 에디터와 똑같은 스타일 속성을 복사하여 가상 좌표 연산
             const div = document.createElement('div');
             const copyStyle = window.getComputedStyle(textarea);
             for (const prop of copyStyle) {
@@ -406,7 +355,6 @@
             div.style.whiteSpace = 'pre-wrap';
             div.style.wordBreak = 'break-all';
             
-            // 줄바꿈 매칭 계산 보정
             div.textContent = text;
             
             const span = document.createElement('span');
@@ -418,7 +366,6 @@
             const lineHeight = parseInt(copyStyle.lineHeight);
             document.body.removeChild(div);
             
-            // 에디터 엘리먼트 자체의 스크롤 및 위치 오프셋 값 산출 통합
             const rect = textarea.getBoundingClientRect();
             
             return {
@@ -484,21 +431,19 @@
             }
         }
 
-        // 🎯 [제안 1 핵심] 사용자가 타이핑 중인 줄 바로 밑에 팝업 띄우기
+        // 사용자가 타이핑 중인 줄 바로 밑에 팝업 띄우기
         function openAutoCompletePopup(textarea) {
             const popup = document.getElementById('autoCompletePopup');
             const cursorPos = textarea.selectionStart;
             
-            // 실시간 커서의 한 줄 밑 절대 픽셀($top, left$) 좌표 연산 반영
             const coords = getCaretCoordinates(textarea, cursorPos);
             
-            // 메인 컨테이너 외부 레이아웃 스크롤 기준 좌표 보정 연산
             const mainContainer = document.querySelector('main');
             const mainRect = mainContainer.getBoundingClientRect();
 
             popup.style.position = 'fixed';
             popup.style.left = `${coords.left}px`;
-            popup.style.top = `${coords.top + 4}px`; // 한 줄 밑 4px 여백 배치
+            popup.style.top = `${coords.top + 4}px`; 
             popup.style.display = 'block';
 
             renderPopupItems();
@@ -601,9 +546,7 @@
                 li.className = `menu-item ${key === currentKey ? 'active' : ''}`;
                 li.id = `menu-${key}`;
                 
-                // 공식 위키 고유 아이콘 지정 분기문
-                const icon = wikiData[key].isProtected ? 'verified' : 'description';
-                li.innerHTML = `<span class="material-icons" style="font-size:1.1rem;">${icon}</span> ${wikiData[key].title}`;
+                li.innerHTML = `<span class="material-icons" style="font-size:1.1rem;">description</span> ${wikiData[key].title}`;
                 li.onclick = () => { loadDocument(key); switchPane('paneView'); };
                 menuList.appendChild(li);
             });
@@ -627,18 +570,8 @@
 
             let tagsHtml = doc.tags.map(tag => `<span class="tag">#${tag.trim()}</span>`).join('');
             
-            // 🎯 [제안 2 핵심] 읽기용 문서 로드 시 공식 위키 상태 체크 후 삭제/수정 차단 제어 구현
-            const editBtn = document.getElementById('editActionBtn');
-            const deleteBtn = document.getElementById('deleteActionBtn');
-            
-            if (doc.isProtected) {
-                editBtn.style.display = 'none';
-                deleteBtn.style.display = 'none';
-                tagsHtml += ` <span class="badge-secure"><span class="material-icons" style="font-size:0.9rem;">lock</span>수정 불가능 문서</span>`;
-            } else {
-                editBtn.style.display = 'flex';
-                deleteBtn.style.display = 'flex';
-            }
+            document.getElementById('editActionBtn').style.display = 'flex';
+            document.getElementById('deleteActionBtn').style.display = 'flex';
 
             document.getElementById('displayMeta').innerHTML = `${tagsHtml} <span style="margin-left:auto; font-size:0.8rem;">최근 수정: ${doc.date}</span>`;
         }
@@ -656,7 +589,6 @@
 
         function openEditForm() {
             const doc = wikiData[currentKey];
-            if (doc.isProtected) return alert('시스템 공식 위키는 수정할 수 없습니다.');
             
             document.getElementById('formModeTitle').innerText = `"${doc.title}" 편집`;
             document.getElementById('formTitle').value = doc.title;
@@ -676,12 +608,6 @@
             if (!title) return alert('제목을 입력해주세요.');
 
             const key = title.replace(/\s+/g, '_');
-            
-            // 혹시라도 우회 저장을 막기 위한 2차 무결성 검증 추가
-            if (wikiData[key] && wikiData[key].isProtected) {
-                return alert('해당 공식 문서는 수정 권한이 없습니다.');
-            }
-
             const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(t => t) : [];
             
             const now = new Date();
@@ -797,8 +723,6 @@
         }
         
         function deleteDocument() {
-            const doc = wikiData[currentKey];
-            if (doc && doc.isProtected) return alert('시스템 공식 위키는 삭제할 수 없습니다.');
             if(!confirm('문서를 삭제하시겠습니까?')) return;
             delete wikiData[currentKey]; commitStorage(); init();
         }
